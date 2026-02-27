@@ -1,25 +1,42 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { documentController } from '../controllers/document.controller';
 
 const documentRoutes = Router();
 
-// POST /api/documents/upload - Upload a document
-documentRoutes.post('/upload', (req, res) => {
-  res.status(201).json({ message: 'Document uploaded', data: { id: 'doc_123' } });
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
 });
 
-// GET /api/documents - List all documents
-documentRoutes.get('/', (_req, res) => {
-  res.json({ message: 'List documents', data: [] });
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`File type ${ext} not allowed`));
+    }
+  },
 });
 
-// GET /api/documents/:id - Get document by ID
-documentRoutes.get('/:id', (req, res) => {
-  res.json({ message: `Get document ${req.params.id}`, data: null });
-});
-
-// DELETE /api/documents/:id - Delete a document
-documentRoutes.delete('/:id', (req, res) => {
-  res.json({ message: `Document ${req.params.id} deleted` });
-});
+// ─── Routes ───
+documentRoutes.get('/', documentController.list);
+documentRoutes.post('/upload', upload.single('file'), documentController.upload);
+documentRoutes.get('/:id', documentController.getById);
+documentRoutes.delete('/:id', documentController.remove);
 
 export { documentRoutes };

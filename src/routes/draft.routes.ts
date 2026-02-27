@@ -1,30 +1,25 @@
 import { Router } from 'express';
+import { draftController } from '../controllers/draft.controller';
 
 const draftRoutes = Router();
 
-// GET /api/drafts - List all drafts
-draftRoutes.get('/', (_req, res) => {
-  res.json({ message: 'List all drafts', data: [] });
-});
+// ─── Templates ───
+draftRoutes.get('/templates', draftController.getTemplates);
+draftRoutes.get('/templates/:id', draftController.getTemplate);
 
-// GET /api/drafts/:id - Get draft by ID
-draftRoutes.get('/:id', (req, res) => {
-  res.json({ message: `Get draft ${req.params.id}`, data: null });
-});
+// ─── Drafts (CRUD) ───
+draftRoutes.get('/', draftController.listDrafts);
+draftRoutes.post('/', draftController.createDraft);
+draftRoutes.get('/trash', draftController.listTrash);
+draftRoutes.get('/:id', draftController.getDraft);
+draftRoutes.put('/:id', draftController.updateDraft);
 
-// POST /api/drafts - Create a new draft
-draftRoutes.post('/', (req, res) => {
-  res.status(201).json({ message: 'Draft created', data: req.body });
-});
+// ─── Soft Delete / Trash ───
+draftRoutes.patch('/:id/trash', draftController.trashDraft);
+draftRoutes.patch('/:id/restore', draftController.restoreDraft);
+draftRoutes.delete('/:id/permanent', draftController.permanentDeleteDraft);
 
-// PUT /api/drafts/:id - Update a draft
-draftRoutes.put('/:id', (req, res) => {
-  res.json({ message: `Draft ${req.params.id} updated`, data: req.body });
-});
-
-// DELETE /api/drafts/:id - Delete a draft
-draftRoutes.delete('/:id', (req, res) => {
-  res.json({ message: `Draft ${req.params.id} deleted` });
-});
+// Legacy fallback (soft delete by default)
+draftRoutes.delete('/:id', draftController.trashDraft);
 
 export { draftRoutes };

@@ -1,0 +1,148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ───
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  name            String
+  password        String?      // bcrypt hash (null for Google-only users)
+  googleId        String?      @unique
+  provider        AuthProvider @default(EMAIL)
+  avatarUrl       String?
+  registrationId  String?      // CA Registration ID
+  phone           String?
+  role            Role         @default(USER)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  cases    Case[]
+  drafts   Draft[]
+  documents Document[]
+
+  @@map("users")
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ─── Case ───
+model Case {
+  id          String     @id @default(cuid())
+  title       String
+  clientName  String?
+  referenceNo String?
+  description String?
+  status      CaseStatus @default(OPEN)
+  dueDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  drafts    Draft[]
+  documents Document[]
+
+  @@index([userId])
+  @@map("cases")
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+// ─── Draft ───
+model Draft {
+  id        String      @id @default(cuid())
+  title     String
+  category  DraftCategory @default(GENERAL)
+  content   String?     @db.Text
+  status    DraftStatus @default(DRAFT)
+  score     Float?      // AI quality score
+  deletedAt DateTime?   // Soft delete timestamp
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  caseId    String?
+  case      Case?  @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([caseId])
+  @@map("drafts")
+}
+
+enum DraftCategory {
+  SCN_REPLY
+  APPEAL_MEMORANDUM
+  LEGAL_OPINION
+  GENERAL
+}
+
+enum DraftStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  EXPORTED
+}
+
+// ─── Document ───
+model Document {
+  id          String   @id @default(cuid())
+  filename    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String   // S3 / local path
+  createdAt   DateTime @default(now())
+
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  caseId    String?
+  case      Case?  @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([caseId])
+  @@map("documents")
+}
+
+// ─── Law Library Entry ───
+model LawEntry {
+  id          String   @id @default(cuid())
+  category    String   // GST Law, Case Law, Income Tax, Notification
+  section     String?  // Section 29(2)(c), Madras HC 2022, etc.
+  title       String
+  description String   @db.Text
+  tags        String[] // PostgreSQL array
+  sourceUrl   String?
+  court       String?
+  year        Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@map("law_entries")
+}
