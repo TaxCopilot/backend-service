@@ -10,7 +10,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8001;
+const PORT = process.env.PORT || 8002;
 
 // ─── CORS Configuration ───
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')

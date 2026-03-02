@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8001/api/auth/google/callback';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8000/api/auth/google/callback';
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
 

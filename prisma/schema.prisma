@@ -115,7 +115,9 @@ model Document {
   filename    String
   mimeType    String
   sizeBytes   Int
-  storagePath String   // S3 / local path
+  storagePath String   // S3 URL or local path
+  s3Bucket    String?  // S3 bucket name (for analysis uploads)
+  s3Key       String?  // S3 object key (for analysis uploads)
   createdAt   DateTime @default(now())
 
   userId    String
