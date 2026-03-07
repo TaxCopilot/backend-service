@@ -8,7 +8,8 @@ export const analysisFileController = {
         res.status(400).json({ error: 'No file uploaded' });
         return;
       }
-      const result = await analysisFileService.upload(req.user!.userId, req.file);
+      const caseId = (req.body && req.body.caseId) || undefined;
+      const result = await analysisFileService.upload(req.user!.userId, req.file, caseId);
       res.status(201).json({ data: result });
     } catch (err: any) {
       console.error('[analysisFile] Upload error:', err);
@@ -18,7 +19,8 @@ export const analysisFileController = {
 
   async list(req: Request, res: Response): Promise<void> {
     try {
-      const docs = await analysisFileService.listByUser(req.user!.userId);
+      const caseId = typeof req.query.caseId === 'string' ? req.query.caseId : undefined;
+      const docs = await analysisFileService.listByUser(req.user!.userId, caseId);
       res.json({ data: docs });
     } catch (err: any) {
       res.status(err.status || 500).json({ error: err.message || 'Failed to fetch documents' });

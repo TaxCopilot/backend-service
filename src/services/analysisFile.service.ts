@@ -14,7 +14,7 @@ const s3Client = new S3Client({
 const BUCKET = process.env.S3_BUCKET || 'taxcopilot-files';
 
 export const analysisFileService = {
-  async upload(userId: string, file: Express.Multer.File) {
+  async upload(userId: string, file: Express.Multer.File, caseId?: string) {
     const s3Key = `uploads/${userId}/${Date.now()}-${file.originalname}`;
     const fileBuffer = fs.readFileSync(file.path);
 
@@ -42,6 +42,7 @@ export const analysisFileService = {
         s3Bucket: BUCKET,
         s3Key,
         userId,
+        caseId: caseId || null,
       },
     });
 
@@ -57,9 +58,11 @@ export const analysisFileService = {
     };
   },
 
-  async listByUser(userId: string) {
+  async listByUser(userId: string, caseId?: string) {
+    const where: Record<string, unknown> = { userId, s3Key: { not: null } };
+    if (caseId) where.caseId = caseId;
     return prisma.document.findMany({
-      where: { userId, s3Key: { not: null } },
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
