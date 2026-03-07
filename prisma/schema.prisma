@@ -29,6 +29,7 @@ model User {
   drafts   Draft[]
   documents Document[]
   chatSessions ChatSession[]
+  caseChatSessions CaseChatSession[]
 
   @@map("users")
 }
@@ -52,6 +53,7 @@ model Case {
   description String?
   status      CaseStatus @default(OPEN)
   dueDate     DateTime?
+  deletedAt   DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -60,6 +62,7 @@ model Case {
 
   drafts    Draft[]
   documents Document[]
+  chatSessions CaseChatSession[]
 
   @@index([userId])
   @@map("cases")
@@ -171,6 +174,36 @@ enum MessageRole {
   system
 }
 
+// ─── Case Chat (per user, per case) ───
+model CaseChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  caseId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  CaseChatMessage[]
+
+  @@unique([userId, caseId])
+  @@index([userId])
+  @@index([caseId])
+  @@map("case_chat_sessions")
+}
+
+model CaseChatMessage {
+  id         String   @id @default(cuid())
+  sessionId  String
+  session    CaseChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role       MessageRole
+  content    String   @db.Text
+  isAnalysis Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([sessionId])
+  @@map("case_chat_messages")
+}
+
 // ─── Law Library Entry ───
 model LawEntry {
   id          String   @id @default(cuid())
@@ -230,14 +263,3 @@ model DocumentCache {
   @@map("document_cache")
 }
 
-model ChatMessage {
-  id         BigInt   @id @default(autoincrement())
-  sessionId  String   @map("session_id") // UUID from frontend
-  role       String   // 'user' | 'assistant'
-  mode       String   // 'analyze' | 'chat' | 'strategy' | 'draft'
-  content    String   @db.Text
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  @@index([sessionId, createdAt])
-  @@map("chat_messages")
-}
