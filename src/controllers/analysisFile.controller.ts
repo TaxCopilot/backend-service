@@ -27,7 +27,7 @@ export const analysisFileController = {
 
   async getById(req: Request, res: Response): Promise<void> {
     try {
-      const doc = await analysisFileService.getById(req.user!.userId, req.params.id);
+      const doc = await analysisFileService.getById(req.user!.userId, req.params.id as string);
       res.json({ data: doc });
     } catch (err: any) {
       res.status(err.status || 500).json({ error: err.message || 'Document not found' });
@@ -36,7 +36,7 @@ export const analysisFileController = {
 
   async getDownloadUrl(req: Request, res: Response): Promise<void> {
     try {
-      const result = await analysisFileService.getDownloadUrl(req.user!.userId, req.params.id);
+      const result = await analysisFileService.getDownloadUrl(req.user!.userId, req.params.id as string);
       res.json({ data: result });
     } catch (err: any) {
       res.status(err.status || 500).json({ error: err.message || 'Failed to generate download URL' });
@@ -45,7 +45,7 @@ export const analysisFileController = {
 
   async remove(req: Request, res: Response): Promise<void> {
     try {
-      const result = await analysisFileService.remove(req.user!.userId, req.params.id);
+      const result = await analysisFileService.remove(req.user!.userId, req.params.id as string);
       res.json(result);
     } catch (err: any) {
       res.status(err.status || 500).json({ error: err.message || 'Failed to delete document' });

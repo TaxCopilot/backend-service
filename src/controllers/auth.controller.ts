@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
+import { userService } from '../services/user.service';
 
 export const authController = {
   async register(req: Request, res: Response): Promise<void> {
     try {
       const { email, name, password } = req.body;
       const result = await authService.register(email, name, password);
+      result.user = await userService.processUser(result.user);
       res.status(201).json({ message: 'Registration successful', ...result });
     } catch (err: any) {
       console.error('[auth] Register error:', err);
@@ -17,6 +19,7 @@ export const authController = {
     try {
       const { email, password } = req.body;
       const result = await authService.login(email, password);
+      result.user = await userService.processUser(result.user);
       res.json({ message: 'Login successful', ...result });
     } catch (err: any) {
       console.error('[auth] Login error:', err);
@@ -48,7 +51,8 @@ export const authController = {
   async getMe(req: Request, res: Response): Promise<void> {
     try {
       // Logic from middleware attaches req.user
-      const user = await authService.getMe(req.user!.userId);
+      let user = await authService.getMe(req.user!.userId);
+      user = await userService.processUser(user);
       res.json({ user });
     } catch (err: any) {
       console.error('[auth] Me error:', err);

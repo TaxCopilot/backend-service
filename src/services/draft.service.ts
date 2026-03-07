@@ -84,7 +84,7 @@ export const draftService = {
     return prisma.draft.create({
       data: {
         title: input.title || 'Untitled Draft',
-        category,
+        category: category as any,
         content: htmlContent,
         userId,
         caseId: input.caseId || null,

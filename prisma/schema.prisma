@@ -28,6 +28,7 @@ model User {
   cases    Case[]
   drafts   Draft[]
   documents Document[]
+  chatSessions ChatSession[]
 
   @@map("users")
 }
@@ -126,9 +127,48 @@ model Document {
   caseId    String?
   case      Case?  @relation(fields: [caseId], references: [id], onDelete: SetNull)
 
+  chatSessions ChatSession[]
+
   @@index([userId])
   @@index([caseId])
   @@map("documents")
+}
+
+// ─── Chat Session (per user, per document) ───
+model ChatSession {
+  id         String        @id @default(cuid())
+  userId     String
+  documentId String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  messages   ChatMessage[]
+
+  @@unique([userId, documentId])
+  @@index([userId])
+  @@index([documentId])
+  @@map("chat_sessions")
+}
+
+// ─── Chat Message ───
+model ChatMessage {
+  id         String      @id @default(cuid())
+  sessionId  String
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role       MessageRole
+  content    String      @db.Text
+  isAnalysis Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
 }
 
 // ─── Law Library Entry ───
