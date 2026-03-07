@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authRoutes } from './auth.routes';
+import { caseRoutes } from './case.routes';
 import { draftRoutes } from './draft.routes';
 import { userRoutes } from './user.routes';
 import { documentRoutes } from './document.routes';
@@ -11,6 +12,7 @@ const router = Router();
 
 router.use('/auth', authRoutes);
 
+router.use('/cases', authMiddleware, caseRoutes);
 router.use('/drafts', authMiddleware, draftRoutes);
 router.use('/users', authMiddleware, userRoutes);
 router.use('/documents', authMiddleware, documentRoutes);
