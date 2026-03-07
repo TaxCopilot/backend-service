@@ -185,6 +185,59 @@ model LawEntry {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([category])
   @@map("law_entries")
+}
+
+// ─── AI Services Internal Tables (Do Not Drop) ───
+
+// Created by LangChain Postgres
+model LangchainPgEmbedding {
+  uuid       String  @id
+  collectionId String  @map("collection_id")
+  embedding  String? // Assuming vector type is not natively supported without extensions, treat as String or ignore in Prisma operations if unsupported
+  document   String?
+  cmetadata  Json?
+  customId   String? @map("custom_id")
+
+  collection LangchainPgCollection @relation(fields: [collectionId], references: [uuid], onDelete: Cascade)
+
+  @@map("langchain_pg_embedding")
+}
+
+model LangchainPgCollection {
+  name      String
+  cmetadata Json?
+  uuid      String  @id
+
+  embeddings LangchainPgEmbedding[]
+
+  @@map("langchain_pg_collection")
+}
+
+// Created by internal Python DB Service
+model DocumentCache {
+  id               BigInt   @id @default(autoincrement())
+  documentId       String   @unique @map("document_id") // doc_abc123
+  extractedText    String   @map("extracted_text")      @db.Text
+  analysisSummary  String?  @map("analysis_summary")    @db.Text
+  sectionsApplied  String?  @map("sections_applied")    @db.Text
+  demands          String?  @db.Text
+  deadlines        String?  @db.Text
+  immediateActions String?  @map("immediate_actions")   @db.Text
+  citations        Json?    // list of strings
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("document_cache")
+}
+
+model ChatMessage {
+  id         BigInt   @id @default(autoincrement())
+  sessionId  String   @map("session_id") // UUID from frontend
+  role       String   // 'user' | 'assistant'
+  mode       String   // 'analyze' | 'chat' | 'strategy' | 'draft'
+  content    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId, createdAt])
+  @@map("chat_messages")
 }
