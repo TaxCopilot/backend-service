@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,28 +7,203 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── User ───
 model User {
-  id              String       @id @default(cuid())
-  email           String       @unique
-  name            String
-  password        String?      // bcrypt hash (null for Google-only users)
-  googleId        String?      @unique
-  provider        AuthProvider @default(EMAIL)
-  avatarUrl       String?
-  registrationId  String?      // CA Registration ID
-  phone           String?
-  role            Role         @default(USER)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  cases    Case[]
-  drafts   Draft[]
-  documents Document[]
-  chatSessions ChatSession[]
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String
+  password       String?
+  googleId       String?      @unique
+  provider       AuthProvider @default(EMAIL)
+  avatarUrl      String?
+  registrationId String?
+  phone          String?
+  role           Role         @default(USER)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  cases            Case[]
+  documents        Document[]
+  drafts           Draft[]
+  chatSessions     ChatSession[]
   caseChatSessions CaseChatSession[]
 
   @@map("users")
+}
+
+model Case {
+  id          String     @id @default(cuid())
+  title       String
+  clientName  String?
+  referenceNo String?
+  description String?
+  status      CaseStatus @default(OPEN)
+  dueDate     DateTime?  @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime   @default(now()) @updatedAt @db.Timestamptz(6)
+  deletedAt   DateTime?  @db.Timestamptz(6)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  documents    Document[]
+  drafts       Draft[]
+  chatSessions CaseChatSession[]
+
+  @@index([userId], map: "idx_cases_userid")
+  @@map("cases")
+}
+
+model Draft {
+  id        String        @id @default(cuid())
+  title     String
+  category  DraftCategory @default(GENERAL)
+  content   String?
+  status    DraftStatus   @default(DRAFT)
+  score     Float?
+  deletedAt DateTime?     @db.Timestamptz(6)
+  createdAt DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+  userId    String
+  caseId    String?
+  case      Case?         @relation(fields: [caseId], references: [id], onUpdate: NoAction)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([caseId], map: "idx_drafts_caseid")
+  @@index([userId], map: "idx_drafts_userid")
+  @@map("drafts")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  filename    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String
+  s3Bucket    String?
+  s3Key       String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  userId      String
+  caseId      String?
+  case        Case?    @relation(fields: [caseId], references: [id], onUpdate: NoAction)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  chatSessions ChatSession[]
+
+  @@index([caseId], map: "idx_documents_caseid")
+  @@index([userId], map: "idx_documents_userid")
+  @@map("documents")
+}
+
+model ChatSession {
+  id         String        @id @default(cuid())
+  userId     String
+  documentId String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  messages   ChatMessage[]
+
+  @@unique([userId, documentId])
+  @@index([userId])
+  @@index([documentId])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  sessionId  String
+  role       MessageRole
+  content    String
+  isAnalysis Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
+model CaseChatSession {
+  id        String            @id @default(cuid())
+  userId    String
+  caseId    String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case      Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  messages  CaseChatMessage[]
+
+  @@unique([userId, caseId])
+  @@index([userId])
+  @@index([caseId])
+  @@map("case_chat_sessions")
+}
+
+model CaseChatMessage {
+  id         String          @id @default(cuid())
+  sessionId  String
+  role       MessageRole
+  content    String
+  isAnalysis Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+  session    CaseChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("case_chat_messages")
+}
+
+model LawEntry {
+  id          String   @id @default(cuid())
+  category    String
+  section     String?
+  title       String
+  description String
+  tags        String[] @default([])
+  sourceUrl   String?
+  court       String?
+  year        Int?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([category], map: "idx_law_entries_category")
+  @@map("law_entries")
+}
+
+model LangchainPgEmbedding {
+  id           String                 @id @unique(map: "ix_langchain_pg_embedding_id") @db.VarChar
+  collectionId String?                @map("collection_id") @db.Uuid
+  embedding    Unsupported("vector")?
+  document     String?                @db.VarChar
+  cmetadata    Json?
+  collection   LangchainPgCollection? @relation(fields: [collectionId], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([cmetadata(ops: JsonbPathOps)], map: "ix_cmetadata_gin", type: Gin)
+  @@map("langchain_pg_embedding")
+}
+
+model LangchainPgCollection {
+  uuid       String                 @id @db.Uuid
+  name       String                 @unique @db.VarChar
+  cmetadata  Json?                  @db.Json
+  embeddings LangchainPgEmbedding[]
+
+  @@map("langchain_pg_collection")
+}
+
+model DocumentCache {
+  documentId      String   @id @map("document_id")
+  s3_key          String?
+  extractedText   String   @map("extracted_text")
+  draft_reply     String
+  citations       Json     @default("[]")
+  is_grounded     Boolean  @default(false)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  analysis_result Json?
+
+  @@map("document_cache")
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
 }
 
 enum AuthProvider {
@@ -44,59 +216,12 @@ enum Role {
   ADMIN
 }
 
-// ─── Case ───
-model Case {
-  id          String     @id @default(cuid())
-  title       String
-  clientName  String?
-  referenceNo String?
-  description String?
-  status      CaseStatus @default(OPEN)
-  dueDate     DateTime?
-  deletedAt   DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  drafts    Draft[]
-  documents Document[]
-  chatSessions CaseChatSession[]
-
-  @@index([userId])
-  @@map("cases")
-}
-
 enum CaseStatus {
   OPEN
   IN_PROGRESS
   REVIEW
   COMPLETED
   ARCHIVED
-}
-
-// ─── Draft ───
-model Draft {
-  id        String      @id @default(cuid())
-  title     String
-  category  DraftCategory @default(GENERAL)
-  content   String?     @db.Text
-  status    DraftStatus @default(DRAFT)
-  score     Float?      // AI quality score
-  deletedAt DateTime?   // Soft delete timestamp
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  userId    String
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  caseId    String?
-  case      Case?  @relation(fields: [caseId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([caseId])
-  @@map("drafts")
 }
 
 enum DraftCategory {
@@ -112,154 +237,3 @@ enum DraftStatus {
   APPROVED
   EXPORTED
 }
-
-// ─── Document ───
-model Document {
-  id          String   @id @default(cuid())
-  filename    String
-  mimeType    String
-  sizeBytes   Int
-  storagePath String   // S3 URL or local path
-  s3Bucket    String?  // S3 bucket name (for analysis uploads)
-  s3Key       String?  // S3 object key (for analysis uploads)
-  createdAt   DateTime @default(now())
-
-  userId    String
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  caseId    String?
-  case      Case?  @relation(fields: [caseId], references: [id], onDelete: SetNull)
-
-  chatSessions ChatSession[]
-
-  @@index([userId])
-  @@index([caseId])
-  @@map("documents")
-}
-
-// ─── Chat Session (per user, per document) ───
-model ChatSession {
-  id         String        @id @default(cuid())
-  userId     String
-  documentId String
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  document   Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  messages   ChatMessage[]
-
-  @@unique([userId, documentId])
-  @@index([userId])
-  @@index([documentId])
-  @@map("chat_sessions")
-}
-
-// ─── Chat Message ───
-model ChatMessage {
-  id         String      @id @default(cuid())
-  sessionId  String
-  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role       MessageRole
-  content    String      @db.Text
-  isAnalysis Boolean     @default(false)
-  createdAt  DateTime    @default(now())
-
-  @@index([sessionId])
-  @@map("chat_messages")
-}
-
-enum MessageRole {
-  user
-  assistant
-  system
-}
-
-// ─── Case Chat (per user, per case) ───
-model CaseChatSession {
-  id        String   @id @default(cuid())
-  userId    String
-  caseId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  messages  CaseChatMessage[]
-
-  @@unique([userId, caseId])
-  @@index([userId])
-  @@index([caseId])
-  @@map("case_chat_sessions")
-}
-
-model CaseChatMessage {
-  id         String   @id @default(cuid())
-  sessionId  String
-  session    CaseChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role       MessageRole
-  content    String   @db.Text
-  isAnalysis Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  @@index([sessionId])
-  @@map("case_chat_messages")
-}
-
-// ─── Law Library Entry ───
-model LawEntry {
-  id          String   @id @default(cuid())
-  category    String   // GST Law, Case Law, Income Tax, Notification
-  section     String?  // Section 29(2)(c), Madras HC 2022, etc.
-  title       String
-  description String   @db.Text
-  tags        String[] // PostgreSQL array
-  sourceUrl   String?
-  court       String?
-  year        Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("law_entries")
-}
-
-// ─── AI Services Internal Tables (Do Not Drop) ───
-
-// Created by LangChain Postgres
-model LangchainPgEmbedding {
-  uuid       String  @id
-  collectionId String  @map("collection_id")
-  embedding  String? // Assuming vector type is not natively supported without extensions, treat as String or ignore in Prisma operations if unsupported
-  document   String?
-  cmetadata  Json?
-  customId   String? @map("custom_id")
-
-  collection LangchainPgCollection @relation(fields: [collectionId], references: [uuid], onDelete: Cascade)
-
-  @@map("langchain_pg_embedding")
-}
-
-model LangchainPgCollection {
-  name      String
-  cmetadata Json?
-  uuid      String  @id
-
-  embeddings LangchainPgEmbedding[]
-
-  @@map("langchain_pg_collection")
-}
-
-// Created by internal Python DB Service
-model DocumentCache {
-  id               BigInt   @id @default(autoincrement())
-  documentId       String   @unique @map("document_id") // doc_abc123
-  extractedText    String   @map("extracted_text")      @db.Text
-  analysisSummary  String?  @map("analysis_summary")    @db.Text
-  sectionsApplied  String?  @map("sections_applied")    @db.Text
-  demands          String?  @db.Text
-  deadlines        String?  @db.Text
-  immediateActions String?  @map("immediate_actions")   @db.Text
-  citations        Json?    // list of strings
-  createdAt        DateTime @default(now()) @map("created_at")
-
-  @@map("document_cache")
-}
-
